@@ -5,6 +5,7 @@ import time
 import math
 import psutil
 import requests
+from aiohttp import web
 
 # Replace these with your own values
 API_ID = 23048702
@@ -15,7 +16,7 @@ BOT_TOKEN = '7526802238:AAHTd-lU6F-mDY0AuKgBVae9etep2F_vS2Y'
 client = TelegramClient('mirror_bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
 # Local storage directory
-DOWNLOAD_DIR = r"C:\koustubh\New folder"
+DOWNLOAD_DIR = "downloads"
 if not os.path.exists(DOWNLOAD_DIR):
     os.makedirs(DOWNLOAD_DIR)
 
@@ -109,7 +110,8 @@ async def download_url(url, file_path, event, progress_message):
                 file.write(chunk)
                 downloaded_size += len(chunk)
                 await progress_url(downloaded_size, total_size, event, start_time, os.path.basename(file_path), progress_message)
-                return True
+
+        return True
     except Exception as e:
         await event.reply(f"Error downloading file: {str(e)}")
         return False
@@ -171,7 +173,28 @@ async def handle_mirror_command(event):
             await event.reply("Please reply to a file or provide a valid URL with /mirror.")
     except Exception as e:
         await event.reply(f"An error occurred: {str(e)}")
+
+# Minimal HTTP server to satisfy Render's port binding requirement
+async def handle(request):
+    return web.Response(text="Hello, World!")
+
+async def start_http_server():
+    app = web.Application()
+    app.router.add_get('/', handle)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, '0.0.0.0', int(os.environ.get('PORT', 8080)))
+    await site.start()
+    print("HTTP server started")
+
+# Run both the Telegram bot and the HTTP server
+async def main():
+    await asyncio.gather(
+        client.run_until_disconnected(),
+        start_http_server()
+    )
+
 # Start the bot
-if __name__ == '__main__':
+if name == 'main':
     print("Bot is running...")
-    client.run_until_disconnected()
+    asyncio.run(main())
